@@ -2,9 +2,9 @@ import React from 'react'
 
 const Navbar = () => {
     return (
-        <div className='flex items-center justify-center'>
+        <div className='flex items-center justify-center shadow'>
             <div className='flex items-center justify-between p-5 w-4/5'>
-                <h1 className='font-bold text-xl'>
+                <h1 className='font-bold text-xl bg-gray-300 p-2 rounded-2xl'>
                     FPT AI TTS
                 </h1>
                 <div>
