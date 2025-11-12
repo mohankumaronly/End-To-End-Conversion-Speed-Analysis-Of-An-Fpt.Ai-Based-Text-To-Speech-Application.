@@ -20,3 +20,5 @@
 // another minor improvement
 
 // random update on startup
+
+// temporary log for debugging
