@@ -27,41 +27,48 @@ const LoginForm = () => {
         body: JSON.stringify(payload),
       })
 
+      // If backend returns non-JSON (rare), this may throw — keep catch below
       const data = await res.json()
 
       if (!res.ok) {
-        // Backend may send an error message inside data.message or data.error
         const msg = data?.message || data?.error || 'Login failed'
         setError(msg)
         setLoading(false)
         return
       }
 
-      // assume token is at data.data.token (based on your register response)
+      // extract token
       const token = data?.data?.token ?? data?.token ?? null
+      if (token) localStorage.setItem('token', token)
 
-      if (token) {
-        localStorage.setItem('token', token)
-      }
-
-      // save user info if backend returned it
+      // extract user
       const userObj = data?.data
         ? {
-          username: data.data.username ?? null,
-          email: data.data.email ?? null,
-          id: data.data._id ?? null,
-        }
+            username: data.data.username ?? null,
+            email: data.data.email ?? null,
+            id: data.data._id ?? null,
+          }
         : null
 
-      if (userObj) {
-        localStorage.setItem('user', JSON.stringify(userObj))
+      if (userObj) localStorage.setItem('user', JSON.stringify(userObj))
+
+      // notify same-tab listeners immediately so header updates without reload
+      try {
+        window.dispatchEvent(new Event('authChanged'))
+      } catch (e) {
+        // ignore if dispatching custom event fails for any reason
+        // (some older browsers or strict CSP might block)
+        // console.warn('authChanged dispatch failed', e)
       }
 
       setSuccess(data?.message || 'Logged in successfully')
       setLoading(false)
 
-      // navigate to dashboard (change the route as needed)
-      setTimeout(() => navigate('/dashboard'), 700)
+      // navigate to home, then dispatch again after a short tick to cover race conditions
+      setTimeout(() => {
+        navigate('/home')
+        try { window.dispatchEvent(new Event('authChanged')) } catch (e) {}
+      }, 200)
     } catch (err) {
       console.error('Login error:', err)
       setError('Server error. Please try again later.')

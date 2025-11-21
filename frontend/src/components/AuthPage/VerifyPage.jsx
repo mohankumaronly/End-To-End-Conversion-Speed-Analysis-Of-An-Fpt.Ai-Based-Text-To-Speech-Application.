@@ -160,7 +160,7 @@ const VerifyPage = () => {
                     <>
                         <div className="mb-4">
                             <strong>Token (truncated):</strong>
-                            <div className="text-xs text-gray-500 break-words mt-1">{token?.slice(0, 40)}{token?.length > 40 ? '…' : ''}</div>
+                            <div className="text-xs text-gray-500 wrap-break-word mt-1">{token?.slice(0, 40)}{token?.length > 40 ? '…' : ''}</div>
                         </div>
 
                         <div className="space-y-3">
@@ -173,7 +173,7 @@ const VerifyPage = () => {
                                         ) : (
                                             <>
                                                 <div className="font-semibold">Status: {entry.result.status}</div>
-                                                <div className="mt-1 whitespace-pre-wrap text-xs text-gray-700 bg-white p-2 rounded mt-2">
+                                                <div className="mt-1 whitespace-pre-wrap text-xs text-gray-700 bg-white p-2 rounded">
                                                     {entry.result.bodyText || JSON.stringify(entry.result.bodyJson) || '— empty response —'}
                                                 </div>
                                             </>
