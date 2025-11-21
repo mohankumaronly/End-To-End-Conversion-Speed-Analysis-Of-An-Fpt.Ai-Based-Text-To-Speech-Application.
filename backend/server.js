@@ -1,15 +1,18 @@
-const express = require('express');
-const Database_connection = require('./database_connection/db');
-require('dotenv').config();
+import express from "express"
+import 'dotenv/config'
+import connectDB from "./DatabaseConnection/db.js"
+import userRoute from "./routes/userRoute.js"
+// import cors from 'cors'
 
-const app = express();
+const app = express()
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000
 
-const MONGOOSE_URI = process.env.MONGOOSE_URI;
+app.use(express.json())
+app.use('/user', userRoute)
 
-Database_connection(MONGOOSE_URI);
 
 app.listen(PORT, () => {
-    console.log(`The server is running at http://localhost:${PORT}`);
-});
+    connectDB()
+    console.log(`Server is listening at port ${PORT}`);
+})

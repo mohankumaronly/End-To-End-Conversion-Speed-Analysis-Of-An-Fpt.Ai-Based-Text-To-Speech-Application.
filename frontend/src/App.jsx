@@ -14,10 +14,8 @@ import HomeHeader from './components/HomePage/HomeHeader';
 const App = () => {
   return (
     <Router>
-      {/* Show header on all pages except landing & login */}
       {window.location.pathname !== "/" &&
         window.location.pathname !== "/auth" && <HomeHeader />}
-
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />
