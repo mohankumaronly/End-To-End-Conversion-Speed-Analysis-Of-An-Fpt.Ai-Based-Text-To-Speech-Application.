@@ -2,15 +2,6 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Mic, Menu, X, AlertTriangle, UserCircle, Zap } from 'lucide-react';
 
-/**
- * Router-aware HomeHeader (React Router v6)
- *
- * Usage:
- *  - Ensure your App has routes for: "/", "/home", "/history", "/pricing",
- *    "/documentation", "/developers", "/contact", "/auth"
- *  - Import and use <HomeHeader /> (no onViewChange/currentView props required)
- */
-
 const NAV_LINKS = [
   { name: 'Home', action: 'home', isPage: true, href: '/home' },
   { name: 'History', action: 'history', isPage: true, href: '/history' },
@@ -24,8 +15,6 @@ const HomeHeader = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
 
-  // Decide auth button behaviour (navigates by path)
-  // If you want to check auth state here, swap this boolean with real auth check
   const isOnAuthPage = window.location.pathname === '/auth';
   const authButtonText = isOnAuthPage ? 'Go to Dashboard' : 'Login / Register';
   const authButtonTarget = isOnAuthPage ? '/home' : '/auth';

@@ -1,13 +1,28 @@
-import React, { useState } from 'react'
-import TabButton from './TabButton'
-import LoginForm from './LoginForm'
-import RegisterForm from './RegisterForm'
-import { useNavigate } from "react-router-dom";
+// src/components/AuthPage/AuthPage.jsx
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import TabButton from './TabButton';
+import LoginForm from './LoginForm';
+import RegisterForm from './RegisterForm';
 
-const AuthPage = () => {
-  const [view, setView] = useState('login')
-  const isLogin = view === 'login'
-  const navigate = useNavigate();
+const AuthPage = ({ initialView }) => {
+  // initialView prop (from /login or /register) takes priority,
+  // but query param `?view=` can override it.
+  const [searchParams] = useSearchParams();
+  const paramView = searchParams.get('view'); // 'login' or 'register'
+
+  const [view, setView] = useState(initialView || 'login');
+  const isLogin = view === 'login';
+
+  useEffect(() => {
+    if (paramView === 'login' || paramView === 'register') {
+      setView(paramView);
+    } else if (initialView) {
+      // if there's no query param but initialView prop exists, ensure it's applied
+      setView(initialView);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramView, initialView]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6 font-sans">
@@ -38,7 +53,7 @@ const AuthPage = () => {
             <p className="text-sm text-gray-600">
               New to FPT AI Voice?{' '}
               <a
-                className="font-semibold text-orange-600 hover:text-orange-700 transition-colors"
+                className="font-semibold text-orange-600 hover:text-orange-700 transition-colors cursor-pointer"
                 onClick={() => setView('register')}
               >
                 Create an account
@@ -48,7 +63,7 @@ const AuthPage = () => {
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
               <a
-                className="font-semibold text-blue-700 hover:text-blue-800 transition-colors"
+                className="font-semibold text-blue-700 hover:text-blue-800 transition-colors cursor-pointer"
                 onClick={() => setView('login')}
               >
                 Sign In
@@ -57,19 +72,9 @@ const AuthPage = () => {
           )}
         </div>
 
-        {/* 🔵 Back to Landing Page Button */}
-        <div className="text-center mt-6">
-          <button
-            onClick={() => navigate("/")}
-            className="text-sm font-semibold text-blue-700 hover:text-blue-800 transition-colors"
-          >
-            ← Back to Landing Page
-          </button>
-        </div>
-
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AuthPage
+export default AuthPage;
