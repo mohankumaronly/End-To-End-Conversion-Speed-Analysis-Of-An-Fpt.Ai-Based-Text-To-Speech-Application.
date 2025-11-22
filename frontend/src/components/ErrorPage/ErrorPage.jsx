@@ -62,7 +62,7 @@ const ErrorPage = () => {
                 </p>
 
                 <button
-                    onClick={() => navigate('/')}
+                    onClick={() => navigate('/home')}
                     className="
             flex 
             items-center 

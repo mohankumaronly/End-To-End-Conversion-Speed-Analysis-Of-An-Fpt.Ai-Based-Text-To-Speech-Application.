@@ -33,6 +33,7 @@ const HomeHeader = () => {
     }
   };
 
+  // Attach listeners (storage for cross-tab and authChanged for same-tab login), then read initial user
   useEffect(() => {
     const onStorageOrAuth = () => {
       setUser(readUserFromStorage());
@@ -41,6 +42,7 @@ const HomeHeader = () => {
     window.addEventListener('storage', onStorageOrAuth);
     window.addEventListener('authChanged', onStorageOrAuth);
 
+    // initial read AFTER listeners attached to avoid race
     setUser(readUserFromStorage());
 
     return () => {
@@ -49,6 +51,7 @@ const HomeHeader = () => {
     };
   }, []);
 
+  // Close profile dropdown when clicking outside
   useEffect(() => {
     const handler = (e) => {
       if (isProfileOpen && dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -69,6 +72,7 @@ const HomeHeader = () => {
 
   const handleProfileClick = () => setIsProfileOpen((s) => !s);
 
+  // Logout: call backend (if token), clear client storage, then navigate to /auth
   const handleLogout = async () => {
     setIsLoggingOut(true);
     setIsProfileOpen(false);
@@ -83,12 +87,15 @@ const HomeHeader = () => {
         }).catch(() => { });
       }
 
+      // Clear client-side auth
       localStorage.removeItem('token');
       localStorage.removeItem('user');
 
+      // Navigate to /auth so the header and page will re-evaluate auth state
       navigate('/auth');
     } catch (err) {
       console.error('Logout error', err);
+      // Ensure cleanup & navigate even on error
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       navigate('/auth');
@@ -97,16 +104,11 @@ const HomeHeader = () => {
     }
   };
 
-  const goToAccount = () => {
-    setIsProfileOpen(false);
-    navigate('/home');
-  };
-
-  // NEW: Navigate to forgot-password (reset) page
+  // Navigate to forgot-password (used as reset password for logged-in users)
   const goToResetPassword = () => {
     setIsProfileOpen(false);
-    // Optionally pass the user's email in query param so the forgot page can prefill:
-    // navigate(`/auth/forgot-password?email=${encodeURIComponent(user?.email || '')}`)
+    // Optionally pass the user's email in query so the field is prefilled
+    // navigate(`/auth/forgot-password?email=${encodeURIComponent(user?.email || '')}`);
     navigate('/auth/forgot-password');
   };
 
@@ -152,7 +154,7 @@ const HomeHeader = () => {
 
                     <div className="border-t border-gray-100 my-1" />
 
-                    {/* Reset password (replaces Settings) */}
+                    {/* Reset password (replaces Account) */}
                     <button
                       onClick={goToResetPassword}
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
@@ -191,6 +193,16 @@ const HomeHeader = () => {
                 </button>
               </>
             )}
+
+            {/* mobile menu toggle visible on small screens (appears for logged-in users too) */}
+            <button
+              onClick={() => setIsMenuOpen((s) => !s)}
+              className="lg:hidden p-2 rounded-full text-gray-600 hover:bg-gray-100 transition duration-150"
+              aria-expanded={isMenuOpen}
+              aria-label="Toggle menu"
+            >
+              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
       </div>
