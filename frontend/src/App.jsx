@@ -12,13 +12,19 @@ import ContactPage from './components/ContactPage/ContactPage';
 import DocumentationPage from './components/DocumentationPage/DocumentationPage';
 import HomeHeader from './components/HomePage/HomeHeader';
 import VerifyPage from './components/AuthPage/VerifyPage';
+import ForgotPassword from './components/AuthPage/ForgotPassword';
+import VerifyOtp from './components/AuthPage/VerifyOtp';
+import ChangePassword from './components/AuthPage/ChangePassword';
+
 
 const AppWrapper = () => {
   const location = useLocation();
-  const pathname = location.pathname || '';
+  let pathname = location.pathname || '';
 
-  // Hide header on root, any /auth route (covers /auth and /auth?view=...),
-  // and any /verify route (covers /verify/:token)
+  // normalize (remove trailing slash) to be safe
+  if (pathname.length > 1 && pathname.endsWith('/')) pathname = pathname.replace(/\/$/, '');
+
+  // Hide header on root, any /auth route, and any /verify route
   const shouldHideHeader =
     pathname === '/' || pathname.startsWith('/auth') || pathname.startsWith('/verify');
 
@@ -29,10 +35,10 @@ const AppWrapper = () => {
       <Routes>
         <Route path="/" element={<LandingPage />} />
 
-        {/* Keep /auth if you still want that single URL */}
+        {/* General auth container */}
         <Route path="/auth" element={<AuthPage />} />
 
-        {/* Explicit login/register routes (Option B) */}
+        {/* Explicit login/register paths (optional) */}
         <Route path="/login" element={<AuthPage initialView="login" />} />
         <Route path="/register" element={<AuthPage initialView="register" />} />
 
@@ -41,7 +47,15 @@ const AppWrapper = () => {
         <Route path="/developers" element={<DevelopersPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/documentation" element={<DocumentationPage />} />
+
+        {/* Email verification link (verify token) */}
         <Route path="/verify/:token" element={<VerifyPage />} />
+
+        {/* Forgot password flow */}
+        <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+        <Route path="/auth/verify-otp/:email" element={<VerifyOtp />} />
+        <Route path="/auth/change-password/:email" element={<ChangePassword />} />
+
         <Route path="*" element={<ErrorPage />} />
       </Routes>
     </>

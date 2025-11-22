@@ -103,11 +103,15 @@ const LoginForm = () => {
         required
       />
 
-      <div className="text-right">
-        <a href="#" className="text-sm font-medium text-blue-700 hover:text-blue-800 transition-colors">
-          Forgot password?
-        </a>
-      </div>
+     <div className="text-right">
+      <button
+        type="button"
+        onClick={() => navigate("/auth/forgot-password")}
+        className="text-sm font-medium text-blue-700 hover:text-blue-800 transition-colors"
+      >
+        Forgot password?
+      </button>
+    </div>
 
       {error && <p className="text-sm text-red-500" role="alert">{error}</p>}
       {success && <p className="text-sm text-green-600">{success}</p>}
