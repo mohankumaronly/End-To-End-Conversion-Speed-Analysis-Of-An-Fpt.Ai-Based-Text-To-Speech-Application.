@@ -1,13 +1,16 @@
+// src/components/LoginForm.jsx
 import React, { useState } from 'react'
 import { Mail, Lock, LogIn } from 'lucide-react'
 import InputField from './InputField'
 import { useNavigate } from 'react-router-dom'
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+
 const LoginForm = () => {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -16,19 +19,30 @@ const LoginForm = () => {
     e.preventDefault()
     setError('')
     setSuccess('')
-    setLoading(true)
 
+    if (!email.trim() || !password.trim()) {
+      setError('Please provide both email and password.')
+      return
+    }
+
+    setLoading(true)
     try {
       const payload = { email, password }
 
-      const res = await fetch('http://localhost:8000/user/login', {
+      const res = await fetch(`${API}/user/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
 
-      // If backend returns non-JSON (rare), this may throw — keep catch below
-      const data = await res.json()
+      // safe JSON parse
+      let data = {}
+      try {
+        data = await res.json()
+      } catch (err) {
+        // non-JSON response
+        data = {}
+      }
 
       if (!res.ok) {
         const msg = data?.message || data?.error || 'Login failed'
@@ -37,38 +51,32 @@ const LoginForm = () => {
         return
       }
 
-      // extract token
-      const token = data?.data?.token ?? data?.token ?? null
-      if (token) localStorage.setItem('token', token)
+      // prefer accessToken/refreshToken (matches the backend you showed)
+      const accessToken = data?.accessToken ?? data?.data?.accessToken ?? null
+      const refreshToken = data?.refreshToken ?? data?.data?.refreshToken ?? null
+      const user = data?.user ?? data?.data ?? null
 
-      // extract user
-      const userObj = data?.data
-        ? {
-            username: data.data.username ?? null,
-            email: data.data.email ?? null,
-            id: data.data._id ?? null,
-          }
-        : null
+      if (accessToken) localStorage.setItem('accessToken', accessToken)
+      if (refreshToken) localStorage.setItem('refreshToken', refreshToken)
+      // legacy key if other code expects 'token'
+      if (accessToken) localStorage.setItem('token', accessToken)
 
-      if (userObj) localStorage.setItem('user', JSON.stringify(userObj))
-
-      // notify same-tab listeners immediately so header updates without reload
-      try {
-        window.dispatchEvent(new Event('authChanged'))
-      } catch (e) {
-        // ignore if dispatching custom event fails for any reason
-        // (some older browsers or strict CSP might block)
-        // console.warn('authChanged dispatch failed', e)
+      if (user) {
+        const userObj = {
+          username: user.username ?? user.name ?? null,
+          email: user.email ?? null,
+          id: user._id ?? user.id ?? null,
+        }
+        localStorage.setItem('user', JSON.stringify(userObj))
       }
 
-      setSuccess(data?.message || 'Logged in successfully')
+      // notify other parts of the app
+      try { window.dispatchEvent(new Event('authChanged')) } catch (e) {}
+
+      setSuccess(data?.message || `Welcome back ${user?.username ?? ''}`)
       setLoading(false)
 
-      // navigate to home, then dispatch again after a short tick to cover race conditions
-      setTimeout(() => {
-        navigate('/home')
-        try { window.dispatchEvent(new Event('authChanged')) } catch (e) {}
-      }, 200)
+      navigate('/home')
     } catch (err) {
       console.error('Login error:', err)
       setError('Server error. Please try again later.')
@@ -77,13 +85,14 @@ const LoginForm = () => {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
       <InputField
         icon={Mail}
         type="email"
         placeholder="you@company.com"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
+        required
       />
       <InputField
         icon={Lock}
@@ -91,6 +100,7 @@ const LoginForm = () => {
         placeholder="••••••••"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
+        required
       />
 
       <div className="text-right">
@@ -99,7 +109,7 @@ const LoginForm = () => {
         </a>
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-red-500" role="alert">{error}</p>}
       {success && <p className="text-sm text-green-600">{success}</p>}
 
       <button
