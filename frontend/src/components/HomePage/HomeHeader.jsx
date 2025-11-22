@@ -1,7 +1,7 @@
 // src/components/HomePage/HomeHeader.jsx
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Mic, Menu, X, User, LogOut, Settings, Zap } from 'lucide-react';
+import { Mic, Menu, X, User, LogOut, Key, Zap } from 'lucide-react';
 
 const BACKEND = 'http://localhost:8000';
 const LOGOUT_URL = `${BACKEND}/user/logout`;
@@ -33,7 +33,6 @@ const HomeHeader = () => {
     }
   };
 
-  // Attach listeners (storage for cross-tab and authChanged for same-tab login), then read initial user
   useEffect(() => {
     const onStorageOrAuth = () => {
       setUser(readUserFromStorage());
@@ -42,7 +41,6 @@ const HomeHeader = () => {
     window.addEventListener('storage', onStorageOrAuth);
     window.addEventListener('authChanged', onStorageOrAuth);
 
-    // initial read AFTER listeners attached to avoid race
     setUser(readUserFromStorage());
 
     return () => {
@@ -51,7 +49,6 @@ const HomeHeader = () => {
     };
   }, []);
 
-  // Close profile dropdown when clicking outside
   useEffect(() => {
     const handler = (e) => {
       if (isProfileOpen && dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -72,8 +69,6 @@ const HomeHeader = () => {
 
   const handleProfileClick = () => setIsProfileOpen((s) => !s);
 
-  // Logout: call backend (if token), clear client storage, then navigate to /auth
-  // Do NOT dispatch authChanged or setUser(null) here — header will update after navigation
   const handleLogout = async () => {
     setIsLoggingOut(true);
     setIsProfileOpen(false);
@@ -83,20 +78,17 @@ const HomeHeader = () => {
 
       if (token) {
         await fetch(LOGOUT_URL, {
-          method: 'POST', // change to GET if your API expects GET
+          method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         }).catch(() => { });
       }
 
-      // Clear client-side auth
       localStorage.removeItem('token');
       localStorage.removeItem('user');
 
-      // Navigate to /auth so the header and page will re-evaluate auth state
       navigate('/auth');
     } catch (err) {
       console.error('Logout error', err);
-      // Ensure cleanup & navigate even on error
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       navigate('/auth');
@@ -108,6 +100,14 @@ const HomeHeader = () => {
   const goToAccount = () => {
     setIsProfileOpen(false);
     navigate('/home');
+  };
+
+  // NEW: Navigate to forgot-password (reset) page
+  const goToResetPassword = () => {
+    setIsProfileOpen(false);
+    // Optionally pass the user's email in query param so the forgot page can prefill:
+    // navigate(`/auth/forgot-password?email=${encodeURIComponent(user?.email || '')}`)
+    navigate('/auth/forgot-password');
   };
 
   return (
@@ -152,12 +152,13 @@ const HomeHeader = () => {
 
                     <div className="border-t border-gray-100 my-1" />
 
+                    {/* Reset password (replaces Settings) */}
                     <button
-                      onClick={goToAccount}
+                      onClick={goToResetPassword}
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                     >
-                      <Settings className="w-4 h-4" />
-                      Account
+                      <Key className="w-4 h-4" />
+                      Reset password
                     </button>
 
                     <button
