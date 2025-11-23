@@ -1,18 +1,34 @@
-import express from "express"
-import { changePassword, forgotPassword, loginUser, logoutUser, registerUser, verification, verifyOTP} from "../controllers/userController.js"
-import { isAuthenticated } from "../middleware/isAuthenticated.js"
-import { userSchema, validateUser } from "../validators/userValidate.js"
+// routes/userRoutes.js
+import express from "express";
+import {
+  changePassword,
+  forgotPassword,
+  loginUser,
+  logoutUser,
+  registerUser,
+  verification,
+  verifyOTP
+} from "../controllers/userController.js";
 
-const router = express.Router()
+import { isAuthenticated } from "../middleware/isAuthenticated.js";
+import { userSchema, validateUser } from "../validators/userValidate.js";
 
+// import tts controller
+import { generateTTS } from "../controllers/ttsController.js";
 
-router.post('/register', validateUser(userSchema), registerUser)
-router.post('/verify', verification)
-router.post('/login', loginUser)
-router.post('/logout', isAuthenticated ,logoutUser)
-router.post('/forgot-password', forgotPassword)
-router.post('/verify-otp/:email', verifyOTP)
-router.post('/change-password/:email', changePassword)
+const router = express.Router();
 
+router.post('/register', validateUser(userSchema), registerUser);
+router.post('/verify', verification);
+router.post('/login', loginUser);
+router.post('/logout', isAuthenticated, logoutUser);
+router.post('/forgot-password', forgotPassword);
+router.post('/verify-otp/:email', verifyOTP);
+router.post('/change-password/:email', changePassword);
 
-export default router
+// NEW: protected TTS generation endpoint
+// Content-Type: text/plain with body = the text to synthesize
+// Optional headers: "voice" and "speed"
+router.post('/tts/generate', isAuthenticated, express.text({ type: "text/*" }), generateTTS);
+
+export default router;

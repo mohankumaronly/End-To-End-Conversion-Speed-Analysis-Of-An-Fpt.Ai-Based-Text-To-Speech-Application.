@@ -13,4 +13,17 @@ const userSchema = new mongoose.Schema({
     otpExpiry: { type: Date, default: null }
 }, { timestamps: true })
 
+
+const ttsRecordSchema = new mongoose.Schema({
+    filename: { type: String, required: true },   // saved filename
+    url: { type: String, required: true },        // public URL or path
+    text: { type: String },                       // text used for TTS
+    voice: { type: String },                      // requested voice
+    speed: { type: Number },                      // numeric speed
+    sizeBytes: { type: Number },                  // file size in bytes
+    mimeType: { type: String },                   // e.g. audio/mpeg
+    durationSec: { type: Number },                // audio duration in seconds
+    createdAt: { type: Date, default: Date.now }
+});
+
 export const User = mongoose.model("User", userSchema);

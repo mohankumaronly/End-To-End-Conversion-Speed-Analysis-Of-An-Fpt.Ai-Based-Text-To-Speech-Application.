@@ -24,39 +24,169 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
   const currentVoice = VOICE_OPTIONS.find((v) => v.id === selectedVoice);
   const estimatedCost = (charCount / 1000) * (currentVoice ? currentVoice.price : 0);
 
-  const handleConvert = () => {
-    if (charCount === 0 || isConverting) return;
+  // BASE_URL fallback to same origin if REACT_APP_API_BASE_URL not set
+  // Safe base URL for all React environments (Vite / CRA / Next)
+  // Replace whatever BASE_URL line you have with this:
+  // Backend API base address for local dev
+  const BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || 'http://localhost:8000';
 
+
+
+
+  // helpers
+  function formatDuration(seconds) {
+    if (seconds == null) return '—';
+    const s = Math.round(seconds);
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+  }
+
+  function formatSize(bytes) {
+    if (bytes == null) return '—';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  // Attempt to refresh access token using refresh token stored in localStorage.
+  // Adjust endpoint & payload to match your backend.
+  async function refreshAccessToken() {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken'); // or cookie
+      if (!refreshToken) return null;
+
+      const resp = await fetch(`${BASE_URL}/user/refresh-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!resp.ok) {
+        console.warn('[Auth] refresh token request failed', resp.status);
+        return null;
+      }
+      const data = await resp.json();
+      if (data?.token) {
+        localStorage.setItem('token', data.token);
+        return data.token;
+      }
+      return null;
+    } catch (e) {
+      console.error('[Auth] refreshAccessToken error', e);
+      return null;
+    }
+  }
+
+
+  const handleConvert = async () => {
+    if (charCount === 0 || isConverting) return;
     setIsConverting(true);
     setAudioUrl(null);
 
-    // Simulate API call delay
-    setTimeout(() => {
-      const newDurationFloat = (charCount / 20).toFixed(2); // mock seconds-like
-      const mins = Math.floor(newDurationFloat / 60);
-      const secs = Math.floor(newDurationFloat % 60);
-      const newDuration = `${mins}:${String(secs).padStart(2, '0')}`;
+    const makeRequest = async (accessToken) => {
+      const resp = await fetch(`${BASE_URL}/user/tts/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain',
+          'voice': selectedVoice,
+          'speed': String(speed),
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: prompt,
+      });
+      return resp;
+    };
 
+    try {
+      let token = localStorage.getItem('token') || '';
+      let resp = await makeRequest(token);
+
+      // if token expired or unauthorized, try refresh + retry once
+      if (resp.status === 400 || resp.status === 401) {
+        // try reading body to see if it's the expired-token message
+        let body = '';
+        try { body = await resp.text(); } catch { }
+        const bodyLower = body ? body.toLowerCase() : '';
+        if (bodyLower.includes('expired') || resp.status === 401) {
+          console.log('[Auth] access token expired — attempting refresh');
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            // retry with new token
+            resp = await makeRequest(newToken);
+          } else {
+            throw new Error('Session expired — please log in again');
+          }
+        } else {
+          // other 400/401 reason
+          throw new Error(body || `Server returned ${resp.status}`);
+        }
+      }
+
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '');
+        throw new Error(text || `Server returned ${resp.status}`);
+      }
+
+      const data = await resp.json();
+      if (!data?.ok || !data.file) throw new Error('Invalid response from server');
+
+      const absUrl = data.file.url && data.file.url.startsWith('http') ? data.file.url : `${BASE_URL}${data.file.url}`;
+
+      // push history item (same as before)...
+      const newId = history && history.length ? (history[0].id || 0) + 1 : 1;
+      const durationStr = formatDuration(data.file.durationSec);
+      const sizeStr = formatSize(data.file.sizeBytes);
       const newHistoryItem = {
-        id: (history && history.length ? history[0].id + 1 : 1),
-        duration: newDuration,
+        id: newId,
+        duration: durationStr,
         characters: charCount,
         speed: `${speed}x`,
-        voice: currentVoice ? `${currentVoice.name} (${currentVoice.id})` : selectedVoice,
+        voice: (() => {
+          const v = VOICE_OPTIONS.find((vv) => vv.id === selectedVoice);
+          return v ? `${v.name} (${v.id})` : selectedVoice;
+        })(),
         timestamp: new Date().toISOString().substring(0, 16).replace('T', ' '),
-        size: `${(charCount * 1.5 + Math.random() * 50).toFixed(0)} KB`,
+        size: sizeStr,
+        _meta: {
+          filename: data.file.filename,
+          sizeBytes: data.file.sizeBytes,
+          mimeType: data.file.mimeType,
+          durationSec: data.file.durationSec,
+        },
       };
 
-      // Use functional updater to avoid stale closures
       if (typeof setHistory === 'function') {
         setHistory((prev) => [newHistoryItem, ...(Array.isArray(prev) ? prev : [])]);
       }
 
-      // Mock audio URL
-      setAudioUrl('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
-
+      setAudioUrl(absUrl);
+    } catch (err) {
+      console.error('TTS conversion failed:', err);
+      // Friendly UX: suggest re-login if token refresh failed
+      if (String(err).toLowerCase().includes('session expired') || String(err).toLowerCase().includes('log in')) {
+        alert('Session expired — please log in again.');
+        // optional: redirect to login page
+        // window.location.href = '/login';
+      } else {
+        alert('Conversion failed: ' + (err.message || err));
+      }
+    } finally {
       setIsConverting(false);
-    }, 2000);
+    }
+  };
+
+
+
+  const handleDownload = () => {
+    if (!audioUrl) return;
+    const a = document.createElement('a');
+    a.href = audioUrl;
+    const filenameFallback = `tts-${Date.now()}.mp3`;
+    a.download = filenameFallback;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   return (
@@ -132,9 +262,8 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
               <button
                 onClick={handleConvert}
                 disabled={isConverting || charCount === 0}
-                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-full text-base font-bold text-white shadow-md transition duration-300 ${
-                  isConverting || charCount === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-amber-500 hover:bg-amber-600 transform hover:scale-[1.02]'
-                }`}
+                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-full text-base font-bold text-white shadow-md transition duration-300 ${isConverting || charCount === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-amber-500 hover:bg-amber-600 transform hover:scale-[1.02]'
+                  }`}
               >
                 {isConverting ? (
                   <>
@@ -168,7 +297,7 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
                   </p>
                   <button
                     className="mt-3 flex items-center justify-center text-sm font-medium text-blue-600 hover:text-blue-800 transition duration-150"
-                    onClick={() => console.log('Downloading audio...')}
+                    onClick={handleDownload}
                   >
                     <Download className="w-4 h-4 mr-1" /> Download MP3/WAV
                   </button>
@@ -195,9 +324,8 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
 
       <button
         onClick={() => setIsChatOpen(true)}
-        className={`fixed bottom-8 right-8 z-40 p-4 rounded-full text-white shadow-2xl transition-all duration-300 transform ${
-          isChatOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100 bg-blue-800 hover:bg-blue-900 hover:scale-[1.05]'
-        } flex items-center space-x-2`}
+        className={`fixed bottom-8 right-8 z-40 p-4 rounded-full text-white shadow-2xl transition-all duration-300 transform ${isChatOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100 bg-blue-800 hover:bg-blue-900 hover:scale-[1.05]'
+          } flex items-center space-x-2`}
         title="Interact with AI Assistant"
       >
         <MessageSquare className="w-6 h-6" />
