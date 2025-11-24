@@ -200,3 +200,20 @@ export async function generateTTS(req, res) {
     return res.status(500).json({ error: "Failed to generate TTS", detail: safeDetail });
   }
 }
+
+export async function getTTSHistory(req, res) {
+  try {
+    const userId = req.user?._id || req.userId;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    // select only ttsRecords to keep payload small
+    const user = await User.findById(userId).select('ttsRecords');
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const records = Array.isArray(user.ttsRecords) ? user.ttsRecords.slice().sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)) : [];
+    return res.json({ ok: true, records });
+  } catch (err) {
+    console.error('getTTSHistory error:', err);
+    return res.status(500).json({ error: "Failed to fetch TTS history" });
+  }
+}

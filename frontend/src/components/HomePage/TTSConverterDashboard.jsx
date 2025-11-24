@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FileText, DollarSign, Clock, RefreshCw, Volume2, Play, Download, ArrowLeft, Zap, MessageSquare } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileText, DollarSign, Clock, RefreshCw, Volume2, Play, Download, ArrowLeft, Zap, MessageSquare, X } from 'lucide-react';
 import AIChatBox from './AIChatBox';
 
 const VOICE_OPTIONS = [
@@ -19,19 +19,17 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
   const [audioUrl, setAudioUrl] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
+  // History state + modal
+  const [localHistory, setLocalHistory] = useState(Array.isArray(history) ? history : []);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   const charCount = prompt.length;
   const maxChars = 1000;
   const currentVoice = VOICE_OPTIONS.find((v) => v.id === selectedVoice);
   const estimatedCost = (charCount / 1000) * (currentVoice ? currentVoice.price : 0);
 
-  // BASE_URL fallback to same origin if REACT_APP_API_BASE_URL not set
-  // Safe base URL for all React environments (Vite / CRA / Next)
-  // Replace whatever BASE_URL line you have with this:
-  // Backend API base address for local dev
   const BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || 'http://localhost:8000';
-
-
-
 
   // helpers
   function formatDuration(seconds) {
@@ -50,7 +48,6 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
   }
 
   // Attempt to refresh access token using refresh token stored in localStorage.
-  // Adjust endpoint & payload to match your backend.
   async function refreshAccessToken() {
     try {
       const refreshToken = localStorage.getItem('refreshToken'); // or cookie
@@ -78,7 +75,70 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
     }
   }
 
+  // Fetch history from backend
+  const fetchHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const token = localStorage.getItem('token') || '';
+      let resp = await fetch(`${BASE_URL}/user/tts/history`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
 
+      // if 401/expired, try refresh token and retry
+      if (resp.status === 401 || resp.status === 400) {
+        const body = await resp.text().catch(() => '');
+        if (body.toLowerCase().includes('expired') || resp.status === 401) {
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            resp = await fetch(`${BASE_URL}/user/tts/history`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${newToken}`,
+              },
+            });
+          }
+        }
+      }
+
+      if (!resp.ok) {
+        const txt = await resp.text().catch(() => '');
+        throw new Error(txt || `Server returned ${resp.status}`);
+      }
+
+      const data = await resp.json();
+      const recs = Array.isArray(data.records) ? data.records : [];
+      const norm = recs.map((r, idx) => ({
+        id: r.filename ? r.filename : idx,
+        filename: r.filename,
+        url: r.url,
+        text: r.text || '',
+        voice: r.voice || '',
+        speed: r.speed,
+        sizeBytes: r.sizeBytes,
+        mimeType: r.mimeType,
+        durationSec: r.durationSec,
+        createdAt: r.createdAt || new Date().toISOString(),
+      }));
+      setLocalHistory(norm);
+      if (typeof setHistory === 'function') setHistory(norm);
+    } catch (e) {
+      console.error('fetchHistory error', e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const openHistory = async () => {
+    setShowHistoryModal(true);
+    await fetchHistory();
+  };
+
+  // handle TTS convert with token refresh retry
   const handleConvert = async () => {
     if (charCount === 0 || isConverting) return;
     setIsConverting(true);
@@ -102,23 +162,19 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
       let token = localStorage.getItem('token') || '';
       let resp = await makeRequest(token);
 
-      // if token expired or unauthorized, try refresh + retry once
+      // try refresh on expired/unauthorized
       if (resp.status === 400 || resp.status === 401) {
-        // try reading body to see if it's the expired-token message
         let body = '';
         try { body = await resp.text(); } catch { }
         const bodyLower = body ? body.toLowerCase() : '';
         if (bodyLower.includes('expired') || resp.status === 401) {
-          console.log('[Auth] access token expired — attempting refresh');
           const newToken = await refreshAccessToken();
           if (newToken) {
-            // retry with new token
             resp = await makeRequest(newToken);
           } else {
             throw new Error('Session expired — please log in again');
           }
         } else {
-          // other 400/401 reason
           throw new Error(body || `Server returned ${resp.status}`);
         }
       }
@@ -133,13 +189,11 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
 
       const absUrl = data.file.url && data.file.url.startsWith('http') ? data.file.url : `${BASE_URL}${data.file.url}`;
 
-      // push history item (same as before)...
-      const newId = history && history.length ? (history[0].id || 0) + 1 : 1;
-      const durationStr = formatDuration(data.file.durationSec);
-      const sizeStr = formatSize(data.file.sizeBytes);
+      // create history item from server response
+      const newId = localHistory && localHistory.length ? (localHistory[0].id || 0) + 1 : 1;
       const newHistoryItem = {
         id: newId,
-        duration: durationStr,
+        duration: formatDuration(data.file.durationSec),
         characters: charCount,
         speed: `${speed}x`,
         voice: (() => {
@@ -147,15 +201,19 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
           return v ? `${v.name} (${v.id})` : selectedVoice;
         })(),
         timestamp: new Date().toISOString().substring(0, 16).replace('T', ' '),
-        size: sizeStr,
+        size: formatSize(data.file.sizeBytes),
         _meta: {
           filename: data.file.filename,
           sizeBytes: data.file.sizeBytes,
           mimeType: data.file.mimeType,
           durationSec: data.file.durationSec,
         },
+        filename: data.file.filename,
+        url: absUrl,
+        createdAt: new Date().toISOString(),
       };
 
+      setLocalHistory((prev) => [newHistoryItem, ...(Array.isArray(prev) ? prev : [])]);
       if (typeof setHistory === 'function') {
         setHistory((prev) => [newHistoryItem, ...(Array.isArray(prev) ? prev : [])]);
       }
@@ -163,11 +221,8 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
       setAudioUrl(absUrl);
     } catch (err) {
       console.error('TTS conversion failed:', err);
-      // Friendly UX: suggest re-login if token refresh failed
       if (String(err).toLowerCase().includes('session expired') || String(err).toLowerCase().includes('log in')) {
         alert('Session expired — please log in again.');
-        // optional: redirect to login page
-        // window.location.href = '/login';
       } else {
         alert('Conversion failed: ' + (err.message || err));
       }
@@ -176,18 +231,29 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
     }
   };
 
-
-
-  const handleDownload = () => {
-    if (!audioUrl) return;
+  const handleDownload = (url = null, filename = null) => {
+    const target = url || audioUrl;
+    if (!target) return;
     const a = document.createElement('a');
-    a.href = audioUrl;
-    const filenameFallback = `tts-${Date.now()}.mp3`;
-    a.download = filenameFallback;
+    a.href = target;
+    a.download = filename || `tts-${Date.now()}.mp3`;
     document.body.appendChild(a);
     a.click();
     a.remove();
   };
+
+  const openHistoryItem = (item) => {
+    const abs = item.url && item.url.startsWith('http') ? item.url : `${BASE_URL}${item.url}`;
+    setAudioUrl(abs);
+    setShowHistoryModal(false);
+  };
+
+  // keep localHistory in sync when parent passes new history prop
+  useEffect(() => {
+    if (Array.isArray(history) && history.length) {
+      setLocalHistory(history);
+    }
+  }, [history]);
 
   return (
     <main className="bg-gray-50 min-h-[calc(100vh-64px)] py-10 relative">
@@ -293,11 +359,11 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
                     Your browser does not support the audio element.
                   </audio>
                   <p className="text-sm text-gray-600">
-                    File ready! Duration: {history?.[0]?.duration ?? '—'}, Size: {history?.[0]?.size ?? '—'}.
+                    File ready! Duration: {localHistory?.[0]?._meta?.durationSec ? formatDuration(localHistory[0]._meta.durationSec) : '—'}, Size: {localHistory?.[0]?._meta?.sizeBytes ? formatSize(localHistory[0]._meta.sizeBytes) : '—'}.
                   </p>
                   <button
                     className="mt-3 flex items-center justify-center text-sm font-medium text-blue-600 hover:text-blue-800 transition duration-150"
-                    onClick={handleDownload}
+                    onClick={() => handleDownload(audioUrl, localHistory?.[0]?.filename)}
                   >
                     <Download className="w-4 h-4 mr-1" /> Download MP3/WAV
                   </button>
@@ -314,10 +380,10 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
 
         <div className="mt-8 text-center">
           <button
-            onClick={() => onViewChange && onViewChange('history')}
+            onClick={() => onViewChange ? onViewChange('history') : openHistory()}
             className="text-sm font-medium text-blue-600 hover:text-blue-800 transition duration-150 flex items-center justify-center mx-auto"
           >
-            View Full Conversion History ({history?.length ?? 0} items) <ArrowLeft className="w-4 h-4 ml-2 transform rotate-180" />
+            View Full Conversion History ({localHistory?.length ?? 0} items) <ArrowLeft className="w-4 h-4 ml-2 transform rotate-180" />
           </button>
         </div>
       </div>
@@ -331,6 +397,47 @@ const TTSConverterDashboard = ({ history = [], setHistory, onViewChange }) => {
         <MessageSquare className="w-6 h-6" />
         <span className="hidden sm:inline font-semibold">AI Chat</span>
       </button>
+
+      {/* History Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl p-6 relative">
+            <button onClick={() => setShowHistoryModal(false)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
+            <h3 className="text-lg font-bold mb-4">Conversion History ({localHistory.length})</h3>
+
+            {loadingHistory ? (
+              <div className="py-8 text-center text-gray-500">Loading...</div>
+            ) : localHistory.length === 0 ? (
+              <div className="py-8 text-center text-gray-500">No items yet.</div>
+            ) : (
+              <div className="space-y-3 max-h-[60vh] overflow-auto">
+                {localHistory.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-sm font-medium">{(item.filename || '').slice(0, 2).toUpperCase()}</div>
+                      <div>
+                        <div className="font-semibold">{item.voice || 'Voice'}</div>
+                        <div className="text-sm text-gray-500">{(item.text || '').slice(0, 80)}{(item.text && item.text.length > 80) ? '...' : ''}</div>
+                        <div className="text-xs text-gray-400 mt-1">Created: {new Date(item.createdAt).toLocaleString()}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                      <div className="text-sm text-gray-600 text-right">
+                        <div>{formatDuration(item.durationSec ?? item._meta?.durationSec)}</div>
+                        <div className="text-xs text-gray-400">{formatSize(item.sizeBytes ?? item._meta?.sizeBytes)}</div>
+                      </div>
+
+                      <button onClick={() => openHistoryItem(item)} title="Play this audio" className="p-2 rounded hover:bg-gray-100"><Play className="w-5 h-5" /></button>
+                      <button onClick={() => handleDownload(item.url, item.filename)} title="Download" className="p-2 rounded hover:bg-gray-100"><Download className="w-5 h-5" /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {isChatOpen && <AIChatBox onClose={() => setIsChatOpen(false)} />}
     </main>

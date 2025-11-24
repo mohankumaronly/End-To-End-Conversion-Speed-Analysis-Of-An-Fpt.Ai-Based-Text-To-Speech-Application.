@@ -14,7 +14,7 @@ import { isAuthenticated } from "../middleware/isAuthenticated.js";
 import { userSchema, validateUser } from "../validators/userValidate.js";
 
 // import tts controller
-import { generateTTS } from "../controllers/ttsController.js";
+import { generateTTS, getTTSHistory } from "../controllers/ttsController.js";
 
 const router = express.Router();
 
@@ -30,5 +30,7 @@ router.post('/change-password/:email', changePassword);
 // Content-Type: text/plain with body = the text to synthesize
 // Optional headers: "voice" and "speed"
 router.post('/tts/generate', isAuthenticated, express.text({ type: "text/*" }), generateTTS);
+
+router.get('/tts/history', isAuthenticated, getTTSHistory);
 
 export default router;
