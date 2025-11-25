@@ -31,33 +31,36 @@ Frontend is built with **React**, backend with **Node.js + Express**, and **Mong
 
 ## Demo / Screenshots
 
-> All images are stored in:  
-`/frontend/src/assets/screenshots/`  
-Make sure the folder exists in your repo.
+> All images are located in:  
+`frontend/src/assets/`  
+Make sure these filenames remain unchanged.
 
-Homepage:
-![Homepage](frontend/src/assets/screenshots/homepage.png)
+Dashboard (before login):
+![Dashboard 1](frontend/src/assets/Dashboard_before_login1.png)
+
+Second dashboard screen:
+![Dashboard 2](frontend/src/assets/Dashboard_before_login2.png)
 
 Login Page:
-![Login](frontend/src/assets/screenshots/login.png)
+![Login](frontend/src/assets/Login_page.png)
 
-TTS Input Interface:
-![TTS Input](frontend/src/assets/screenshots/tts-input.png)
+Register Page:
+![Register](frontend/src/assets/Register_page.png)
 
-TTS Output / Audio Player:
-![TTS Output](frontend/src/assets/screenshots/tts-output.png)
+Home screen after login:
+![Home 1](frontend/src/assets/Home_screen_after_login1.png)
 
-Profile / Settings:
-![Profile](frontend/src/assets/screenshots/profile.png)
+Home screen (second view):
+![Home 2](frontend/src/assets/Home_screen_after_login2.png)
 
-Conversion History:
-![History](frontend/src/assets/screenshots/history.png)
+Home screen (third view):
+![Home 3](frontend/src/assets/Home_screen_after_login3.png)
 
-Admin / Additional Page:
-![Admin](frontend/src/assets/screenshots/admin.png)
+Pricing Page:
+![Pricing](frontend/src/assets/Pricing_page.png)
 
-Mobile Responsive View:
-![Mobile](frontend/src/assets/screenshots/mobile.png)
+Contact Page:
+![Contact](frontend/src/assets/Contact_page.png)
 
 ---
 
@@ -127,15 +130,15 @@ college_project/
 │   │   ├── pages/
 │   │   ├── hooks/
 │   │   ├── assets/
-│   │   │   └── screenshots/
-│   │   │       ├── homepage.png
-│   │   │       ├── login.png
-│   │   │       ├── tts-input.png
-│   │   │       ├── tts-output.png
-│   │   │       ├── profile.png
-│   │   │       ├── history.png
-│   │   │       ├── admin.png
-│   │   │       └── mobile.png
+│   │   │   ├── Dashboard_before_login1.png
+│   │   │   ├── Dashboard_before_login2.png
+│   │   │   ├── Login_page.png
+│   │   │   ├── Register_page.png
+│   │   │   ├── Home_screen_after_login1.png
+│   │   │   ├── Home_screen_after_login2.png
+│   │   │   ├── Home_screen_after_login3.png
+│   │   │   ├── Pricing_page.png
+│   │   │   └── Contact_page.png
 │   ├── .env
 │   └── package.json
 │
