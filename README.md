@@ -6,86 +6,151 @@
 - Tech stack
 - Demo / Screenshots
 - Architecture
+- Project structure
 - Setup / Installation
 - API endpoints (summary & examples)
 - Authentication & security details
-- Testing
 - Deployment tips
 - Security checklist & best practices
 - Contributing
 - License
 - Credits & references
 
+---
+
 ## Project overview
-This project is a college-grade web application that converts user-provided text into speech using the FPT.AI Text-to-Speech API. The frontend is built with React, backend with Node.js + Express, and MongoDB for persistent storage. Authentication includes email verification, OTP for password reset, and secure JWT-based sessions.
+This project is a web application that converts user-provided text into speech using the FPT.AI Text-to-Speech API.  
+It includes secure authentication such as:
+- email verification
+- OTP-based password reset
+- JWT-based sessions
+
+Frontend is built with **React**, backend with **Node.js + Express**, and **MongoDB** for data storage.
 
 ---
 
 ## Demo / Screenshots
 
-> The images are referenced from your repository location: `frontend/src/assets/`.  
-> If you keep the images at that location, GitHub will render them correctly.
+> All images are stored in:  
+`/frontend/src/assets/screenshots/`  
+Make sure the folder exists in your repo.
 
-Homepage (after login):
-![Homepage](frontend/src/assets/Screenshot%202025-11-24%20194727.png)
+Homepage:
+![Homepage](frontend/src/assets/screenshots/homepage.png)
 
-Login / Register page:
-![Login Page](frontend/src/assets/Screenshot%202025-11-24%20194745.png)
+Login Page:
+![Login](frontend/src/assets/screenshots/login.png)
 
-TTS input interface:
-![TTS Interface - 1](frontend/src/assets/Screenshot%202025-11-24%20194751.png)
+TTS Input Interface:
+![TTS Input](frontend/src/assets/screenshots/tts-input.png)
 
-TTS conversion result / player:
-![TTS Player - 1](frontend/src/assets/Screenshot%202025-11-24%20194755.png)
+TTS Output / Audio Player:
+![TTS Output](frontend/src/assets/screenshots/tts-output.png)
 
 Profile / Settings:
-![Profile](frontend/src/assets/Screenshot%202025-11-24%20195308.png)
+![Profile](frontend/src/assets/screenshots/profile.png)
 
-Conversion history:
-![History 1](frontend/src/assets/Screenshot%202025-11-24%20195315.png)
+Conversion History:
+![History](frontend/src/assets/screenshots/history.png)
 
-Another TTS screenshot:
-![TTS Interface - 2](frontend/src/assets/Screenshot%202025-11-24%20195319.png)
+Admin / Additional Page:
+![Admin](frontend/src/assets/screenshots/admin.png)
 
-Admin / Additional page:
-![Admin](frontend/src/assets/Screenshot%202025-11-24%20195326.png)
-
-Mobile / Responsive view:
-![Mobile View](frontend/src/assets/Screenshot%202025-11-24%20195337.png)
+Mobile Responsive View:
+![Mobile](frontend/src/assets/screenshots/mobile.png)
 
 ---
 
 ## Features
-- User registration with email verification  
-- OTP-based password reset  
-- JWT authentication  
-- TTS conversion using FPT.AI  
-- Voice & speed selection  
-- User-friendly React UI  
-- Secure backend with rate limiting  
+- User registration with **email verification**
+- **OTP**-based password reset flow
+- Secure **JWT** authentication
+- Convert text → speech using FPT.AI
+- Voice & speed options
+- Responsive UI built in React
 - Optional TTS history tracking
+- Backend rate limiting for protection
+
+---
 
 ## Tech stack
-- Frontend: React, Tailwind CSS  
-- Backend: Node.js, Express  
-- Database: MongoDB  
-- Auth: JWT, bcrypt  
-- Mail: Nodemailer (SMTP)  
-- Third-party APIs: FPT.AI Text-to-Speech
+### Frontend
+- React
+- Tailwind CSS
+- Axios
+
+### Backend
+- Node.js
+- Express.js
+- MongoDB & Mongoose
+- Nodemailer
+- JWT + bcrypt
+
+### External services
+- **FPT.AI** Text-to-Speech API
+- SMTP (Gmail App Password / SendGrid / Mailgun)
+
+---
 
 ## Architecture
-- React frontend communicates with backend API  
-- Backend handles auth, mailing, TTS proxy requests  
-- MongoDB stores users, otp, logs, etc.  
-- FPT.AI API used server-side for text-to-speech
+- React frontend communicates with backend REST API
+- Backend handles:
+  - authentication
+  - email sending
+  - TTS proxying to FPT.AI
+- MongoDB stores:
+  - users
+  - OTPs
+  - verification tokens
+  - optional history
+- FPT.AI API requests happen **server-side** (never exposed to client)
+
+---
+
+## Project structure
+
+```
+college_project/
+│
+├── backend/
+│   ├── controllers/
+│   ├── models/
+│   ├── routes/
+│   ├── middleware/
+│   ├── utils/
+│   ├── server.js
+│   └── .env  (NOT committed)
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── hooks/
+│   │   ├── assets/
+│   │   │   └── screenshots/
+│   │   │       ├── homepage.png
+│   │   │       ├── login.png
+│   │   │       ├── tts-input.png
+│   │   │       ├── tts-output.png
+│   │   │       ├── profile.png
+│   │   │       ├── history.png
+│   │   │       ├── admin.png
+│   │   │       └── mobile.png
+│   ├── .env
+│   └── package.json
+│
+└── README.md
+```
+
+---
 
 ## Setup / Installation
 
 ### Prerequisites
-- Node.js (v16+)  
-- MongoDB (Atlas recommended)  
-- FPT.AI API key  
-- SMTP email account (Gmail App Password / SendGrid)
+- Node.js (v16+)
+- MongoDB Atlas or local instance
+- FPT.AI API key
+- SMTP email account
 
 ### Backend `.env`
 ```
@@ -95,8 +160,8 @@ JWT_SECRET=your_jwt_secret
 FPT_API_KEY=your_fpt_api_key
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
-SMTP_USER=your_email@example.com
-SMTP_PASS=your_smtp_password
+SMTP_USER=your_email
+SMTP_PASS=your_email_password
 FRONTEND_URL=http://localhost:3000
 ```
 
@@ -119,61 +184,39 @@ npm install
 npm run dev
 ```
 
+---
+
 ## API endpoints (summary)
+
 ### Auth
-- POST `/api/auth/register`
-- GET  `/api/auth/verify?token=...`
-- POST `/api/auth/login`
-- POST `/api/auth/request-otp`
-- POST `/api/auth/reset-password`
-- POST `/api/auth/change-password`
+- `POST /api/auth/register`
+- `GET /api/auth/verify?token=...`
+- `POST /api/auth/login`
+- `POST /api/auth/request-otp`
+- `POST /api/auth/reset-password`
+- `POST /api/auth/change-password`
 
 ### TTS
-- POST `/api/tts` → Convert text to speech (server proxies to FPT.AI)
-
-## Security & Auth Details
-- Passwords hashed with bcrypt  
-- Email verification tokens (short-lived)  
-- OTPs for password reset (hashed in DB + expiry)  
-- Short-lived JWT access tokens; optional refresh tokens stored securely
-
-## Deployment tips
-- Use environment variables in production (don't commit `.env`)  
-- Keep FPT API key server-side only  
-- Use HTTPS in production  
-- Monitor FPT API usage to avoid unexpected costs
-
-## Notes about images / paths
-- The images in this README reference `frontend/src/assets/<filename>`.  
-- **If you rename or move images**, update the paths accordingly.
-- Filenames with spaces are supported on GitHub, but it's better to remove spaces. Example rename (from your repo root):
-```bash
-# Recommended: remove spaces and use kebab-case
-git mv "frontend/src/assets/Screenshot 2025-11-24 194727.png" frontend/src/assets/homepage.png
-git mv "frontend/src/assets/Screenshot 2025-11-24 194745.png" frontend/src/assets/login.png
-git mv "frontend/src/assets/Screenshot 2025-11-24 194751.png" frontend/src/assets/tts-1.png
-git mv "frontend/src/assets/Screenshot 2025-11-24 194755.png" frontend/src/assets/tts-player.png
-git mv "frontend/src/assets/Screenshot 2025-11-24 195308.png" frontend/src/assets/profile.png
-git mv "frontend/src/assets/Screenshot 2025-11-24 195315.png" frontend/src/assets/history-1.png
-git mv "frontend/src/assets/Screenshot 2025-11-24 195319.png" frontend/src/assets/tts-2.png
-git mv "frontend/src/assets/Screenshot 2025-11-24 195326.png" frontend/src/assets/admin.png
-git mv "frontend/src/assets/Screenshot 2025-11-24 195337.png" frontend/src/assets/mobile.png
-
-# Then commit the renames:
-git add frontend/src/assets
-git commit -m "Rename screenshots and add README with screenshot references"
-git push
-```
+- `POST /api/tts` → Convert text to speech
 
 ---
 
-## Contributing
-1. Fork  
-2. Create branch `feat/your-feature`  
-3. Commit & PR
+## Deployment tips
+- Never commit `.env` files
+- Use HTTPS in production
+- FPT API key must remain server-side
+- Host suggestions:
+  - Frontend: **Vercel / Netlify**
+  - Backend: **Render / Railway / DigitalOcean**
+  - Database: **MongoDB Atlas**
+
+---
 
 ## License
 MIT
 
+---
+
 ## Credits & references
-- FPT.AI TTS documentation
+- FPT.AI Text-to-Speech API docs
+- MERN documentation
